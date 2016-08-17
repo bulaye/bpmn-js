@@ -9,32 +9,171 @@ describe('features/modeling - remove element behavior', function() {
 
   var testModules = [ coreModule, modelingModule ];
 
+
   describe('combine sequence flow when deleting element', function() {
+
+
+    describe('parallel connections', function() {
+
+      var processDiagramXML = require('./RemoveElementBehavior.bpmn');
+
+      beforeEach(bootstrapModeler(processDiagramXML, { modules: testModules }));
+
+
+      it('horizontal', inject(function(modeling, elementRegistry) {
+
+        // given
+        var task = elementRegistry.get('Task1');
+
+        // when
+        modeling.removeShape(task);
+
+        // then
+        var sequenceFlow1 = elementRegistry.get('SequenceFlow1');
+        var waypoints = sequenceFlow1.waypoints;
+
+        // SequenceFlow2 should be deleted
+        expect(elementRegistry.get(task.id)).to.be.undefined;
+        expect(sequenceFlow1).to.not.be.undefined;
+        expect(elementRegistry.get('SequenceFlow2')).to.be.undefined;
+
+        // source and target have one connection each
+        expect(elementRegistry.get('StartEvent1').outgoing.length).to.be.equal(1);
+        expect(elementRegistry.get('EndEvent1').incoming.length).to.be.equal(1);
+
+        // connection has two horizontally equal waypoints
+        expect(waypoints.length).to.eql(2);
+        expect(waypoints[0].y).to.eql(waypoints[1].y);
+
+      }));
+
+
+      it('vertical', inject(function(modeling, elementRegistry) {
+
+        // given
+        var task = elementRegistry.get('Task4');
+
+        // when
+        modeling.removeShape(task);
+
+        // then
+        var waypoints = elementRegistry.get('SequenceFlow7').waypoints;
+        // connection has two vertically equal waypoints
+        expect(waypoints.length).to.eql(2);
+        expect(waypoints[0].x).to.eql(waypoints[1].x);
+
+      }));
+
+    });
+
+
+    describe('perpendicular connections', function() {
+
+      var gatewayDiagramXML = require('./RemoveElementBehavior.perpendicular.bpmn');
+
+      beforeEach(bootstrapModeler(gatewayDiagramXML, { modules: testModules }));
+
+
+      it('right-down', inject(function(modeling, elementRegistry) {
+
+        // given
+        var task = elementRegistry.get('Task_2');
+        var mid = {
+          'x' : task.x + task.width / 2,
+          'y' : task.y + task.height / 2
+        };
+
+        // when
+        modeling.removeShape(task);
+
+        // then
+        var waypoints = elementRegistry.get('SequenceFlow_1').waypoints;
+        expect(waypoints.length).to.eql(3);
+
+        var intersec = waypoints[1];
+        expect(intersectionEqualsMid(intersec, mid)).to.be.true;
+
+      }));
+
+
+      it('right-up', inject(function(modeling, elementRegistry) {
+
+        // given
+        var task = elementRegistry.get('Task_11');
+        var mid = {
+          'x' : task.x + task.width / 2,
+          'y' : task.y + task.height / 2
+        };
+
+        // when
+        modeling.removeShape(task);
+
+        // then
+        var waypoints = elementRegistry.get('SequenceFlow_7').waypoints;
+        expect(waypoints.length).to.eql(3);
+
+        var intersec = waypoints[1];
+        expect(intersectionEqualsMid(intersec, mid)).to.be.true;
+
+      }));
+
+
+      it('down-right', inject(function(modeling, elementRegistry) {
+
+        // given
+        var task = elementRegistry.get('Task_5');
+        var mid = {
+          'x' : task.x + task.width / 2,
+          'y' : task.y + task.height / 2
+        };
+
+        // when
+        modeling.removeShape(task);
+
+        // then
+        var waypoints = elementRegistry.get('SequenceFlow_3').waypoints;
+        expect(waypoints.length).to.eql(3);
+
+        var intersec = waypoints[1];
+        expect(intersectionEqualsMid(intersec, mid)).to.be.true;
+
+      }));
+
+
+      it('up-right', inject(function(modeling, elementRegistry) {
+
+        // given
+        var task = elementRegistry.get('Task_8');
+        var mid = {
+          'x' : task.x + task.width / 2,
+          'y' : task.y + task.height / 2
+        };
+
+        // when
+        modeling.removeShape(task);
+
+        // then
+        var waypoints = elementRegistry.get('SequenceFlow_5').waypoints;
+        expect(waypoints.length).to.eql(3);
+
+        var intersec = waypoints[1];
+        expect(intersectionEqualsMid(intersec, mid)).to.be.true;
+
+      }));
+
+    });
+
+  });
+
+
+  describe('do not combine sequence flows ', function() {
 
     var processDiagramXML = require('./RemoveElementBehavior.bpmn');
 
     beforeEach(bootstrapModeler(processDiagramXML, { modules: testModules }));
 
-    it('should combine sequence flows on remove', inject(function(modeling, elementRegistry) {
 
-      // given
-      var task = elementRegistry.get('Task1');
-
-      // when
-      modeling.removeShape(task);
-
-      // then
-      expect(elementRegistry.get(task.id)).to.be.undefined;
-      expect(elementRegistry.get('SequenceFlow1')).to.not.be.undefined;
-      expect(elementRegistry.get('SequenceFlow2')).to.be.undefined;
-
-      expect(elementRegistry.get('StartEvent1').outgoing.length).to.be.equal(1);
-      expect(elementRegistry.get('EndEvent1').incoming.length).to.be.equal(1);
-
-    }));
-
-
-    it('should remove all sequence flows', inject(function(modeling, elementRegistry) {
+    it('remove all if there are more than one incoming or outgoing', inject(function(modeling, elementRegistry) {
 
       // given
       var task = elementRegistry.get('Task3');
@@ -54,7 +193,7 @@ describe('features/modeling - remove element behavior', function() {
     }));
 
 
-    it('should not combine not allowed connection', inject(function(modeling, elementRegistry) {
+    it('when connection is not allowed', inject(function(modeling, elementRegistry) {
 
       // given
       var task = elementRegistry.get('Task2');
@@ -75,3 +214,12 @@ describe('features/modeling - remove element behavior', function() {
   });
 
 });
+
+
+
+
+////////////////////////// helper /////////////////////////////////
+
+function intersectionEqualsMid(inter, mid) {
+  return inter.x === mid.x && inter.y === mid.y;
+}
